@@ -4,7 +4,7 @@ import pygame
 from pygame.locals import *
 import pickle as pk
 
-WIDTH,HEIGHT=1500,900
+WIDTH,HEIGHT=1200,700
 pygame.init()
 win=pygame.display.set_mode((WIDTH,HEIGHT))
 pygame.display.set_caption("Level Editor")
@@ -23,6 +23,7 @@ GREY=(128,128,128)
 
 #current color
 current_color=0
+flood = False
 grid=[[0]*(WIDTH//50) for _ in range(HEIGHT//50-1)]
 offset_x,offset_y=0,0
 print(len(grid),HEIGHT//50)
@@ -35,7 +36,10 @@ def drawGrid():
         x=mouse[0]//50
         y=mouse[1]//50
         if y>=1:
-            grid[y+offset_y-1][x+offset_x]=current_color
+            if not flood:
+                grid[y+offset_y-1][x+offset_x]=current_color
+            elif grid[y+offset_y-1][x+offset_x]!=current_color:
+                floodFill(x+offset_x, y+offset_y-1, grid[y+offset_y-1][x+offset_x])
     color=0
     for i in range(HEIGHT//50-1):
         i+=offset_y
@@ -43,7 +47,7 @@ def drawGrid():
             j+=offset_x
             # print(i,j,len(grid),len(grid[0]))
             if grid[i][j]==0:
-                color=WHITE
+                continue
             elif grid[i][j]==1:
                 color=BLACK
             elif grid[i][j]==2:
@@ -75,7 +79,7 @@ def save():
     pk.dump(grid, fptr)
     fptr.close()
 
-def open(file):
+def load(file):
     #load the grid from the file
     fptr = open(file, "rb")
     grid = pk.load(fptr)
@@ -91,23 +95,37 @@ class Button:
     
     def draw(self):
         pygame.draw.rect(win,self.color,self.button)
+        if self.value == current_color:
+            pygame.draw.rect(win,(0,0,0),self.button,2)
+            
     
     def onClick(self):
         global current_color
+        global flood
         mouse=pygame.mouse.get_pos()
         click=pygame.mouse.get_pressed()
         if self.button.collidepoint(mouse):
             if click[0]==1 and self.value!=100:
                 current_color=self.value
+                flood = False
                 # print(current_color)
             if click[0]==1 and self.value==100:
-                self.floodFill(mouse)
-    def floodFill(self,mouse):
-        x=mouse[0]//50
-        y=mouse[1]//50
-        pass
+                flood = True
 
-buttons=[Button(pygame.Rect((0,0,50,50)),(100,100,100),100),Button(pygame.Rect((50,0,50,50)),WHITE,0),Button(pygame.Rect(100,0,50,50),BLACK,1),Button(pygame.Rect(150,0,50,50),RED,2),Button(pygame.Rect(200,0,50,50),GREEN,3),Button(pygame.Rect(250,0,50,50),BLUE,4),Button(pygame.Rect(300,0,50,50),YELLOW,5),Button(pygame.Rect(350,0,50,50),ORANGE,6),Button(pygame.Rect(400,0,50,50),PURPLE,7),Button(pygame.Rect(400,0,50,50),BROWN,8),Button(pygame.Rect(450,0,50,50),GREY,9)]
+def floodFill(x, y, col):
+        grid[y][x] = current_color
+        if y<len(grid)-1 and grid[y+1][x] == col:
+            floodFill(x,y+1,col)
+        if y>0 and grid[y-1][x] == col:
+            floodFill(x,y-1,col)
+        if x<len(grid[0])-1 and grid[y][x+1] == col:
+            floodFill(x+1,y,col)
+        if x>0 and grid[y][x-1] == col:
+            floodFill(x-1,y,col)
+
+
+
+buttons=[Button(pygame.Rect((0,0,50,50)),(200,100,100),100),Button(pygame.Rect((50,0,50,50)),WHITE,0),Button(pygame.Rect(100,0,50,50),BLACK,1),Button(pygame.Rect(150,0,50,50),RED,2),Button(pygame.Rect(200,0,50,50),GREEN,3),Button(pygame.Rect(250,0,50,50),BLUE,4),Button(pygame.Rect(300,0,50,50),YELLOW,5),Button(pygame.Rect(350,0,50,50),ORANGE,6),Button(pygame.Rect(400,0,50,50),PURPLE,7),Button(pygame.Rect(400,0,50,50),BROWN,8),Button(pygame.Rect(450,0,50,50),GREY,9)]
 def putButtons():
     for button in buttons:
         button.draw()
@@ -131,7 +149,7 @@ while True:
             if event.key==K_s:
                 save()
             if event.key==K_o:
-                grid=open("level.dat")
+                grid=load("level.dat")
             if event.key==K_LEFT:
                 if offset_x!=0:
                     offset_x-=1
