@@ -6,12 +6,36 @@ import math
 import pickle as pk
 
 pygame.init()
-WIDTH,HEIGHT=1500,900
+WIDTH,HEIGHT=1200,700
 win=pygame.display.set_mode((WIDTH,HEIGHT))
 pygame.display.set_caption("Physics Demo")
 clock=pygame.time.Clock()
 level=pk.load(open("level.dat","rb"))
 d={"land":1,"water":2,"air":0}
+acid = pygame.Surface((WIDTH, HEIGHT))
+acid.fill((0, 255, 0))
+acid.set_alpha(60)
+
+camX, camY = 0, 0
+robot = pygame.image.load("ROBOT.png")
+
+MW, MH = 3, 2
+map = []
+for i in range(0, MH):
+    mapX = []
+    for j in range(0, MW):
+        ni = str(i)
+        nj = str(j)
+        if len(ni) == 1:
+            ni = '0' + ni
+        if len(nj) == 1:
+            nj = '0' + nj
+        mapX.append(pygame.image.load("lvls/" + ni + nj + ".png"))
+    map.append(mapX)
+
+
+
+
 class Player:
     def __init__(self,x,y,width,height):
         self.x,self.y,self.width,self.height=x,y,width,height
@@ -21,8 +45,8 @@ class Player:
         self.air_timer=0
     
     def draw(self,win):
-        pygame.draw.rect(win,(0,0,0),self.rect)
-    
+        win.blit(robot, (self.rect.x - camX - 15, self.rect.y - camY - 15))
+
     def physics(self):
         self.vel=[0,0]
         key=pygame.key.get_pressed()
@@ -100,21 +124,40 @@ class Player:
             pass
         return blocks
         # pygame.draw.rect(win,(255,0,0),self.hitbox,2)
-player=Player(100,700,50,50)
+player=Player(400,200,50,50)
 def drawMap():
-    for i in range(len(level)):
-        for j in range(len(level[i])):
-            if level[i][j]==d["land"]:
-                pygame.draw.rect(win,(0,0,0),(j*50,i*50,50,50))
-            elif level[i][j]==d["water"]:
-                pygame.draw.rect(win,(0,0,255),(j*50,i*50,50,50))
+    mX = camX // WIDTH
+    mY = camY // HEIGHT
+    shiftX = camX % WIDTH
+    shiftY = camY % HEIGHT
+    if mY >= 0 and mY < len(map) and mX >= 0 and mX < len(map[0]):
+        win.blit(map[mY][mX], (-shiftX, -shiftY))
+    mY += 1
+    if mY >= 0 and mY < len(map) and mX >= 0 and mX < len(map[0]):
+        win.blit(map[mY][mX], (-shiftX, HEIGHT-shiftY))
+    mX += 1
+    if mY >= 0 and mY < len(map) and mX >= 0 and mX < len(map[0]):
+        win.blit(map[mY][mX], (WIDTH-shiftX, HEIGHT-shiftY))
+    mY -= 1
+    if mY >= 0 and mY < len(map) and mX >= 0 and mX < len(map[0]):
+        win.blit(map[mY][mX], (WIDTH-shiftX, -shiftY))
+    
+cnt = 0
+
 def update():
-    win.fill((255,255,255))
-    # pygame.draw.rect(win,(0,0,0),(brick.x,brick.y,brick.width,brick.height))
+    global cnt
+    win.fill((0,0,0))
     drawMap()
     player.physics()
+    global camX, camY
+    camX = player.rect.x - WIDTH // 2
+    camY = player.rect.y - HEIGHT // 2
     player.draw(win)
+    win.blit(acid, (0, 550 + math.sin(cnt/20) * 10 - camY))
+    pygame.draw.rect(win, (0, 255, 0), (0, 550 + math.sin(cnt/20) * 10 - camY, WIDTH, 5))
     pygame.display.update()
+    cnt += 1
+
 while True:
     clock.tick(60)
     update()
@@ -125,4 +168,4 @@ while True:
         if event.type==KEYDOWN:
             if event.key==K_SPACE:
                 if player.air_timer<6:
-                    player.y_momentum=-15
+                    player.y_momentum=-8
